@@ -1,4 +1,14 @@
 /**
+ * Paylines.
+ * @type {*[]}
+ */
+let paylines = [
+    [1, 1, 1, 1, 1], [1, 1, 2, 3, 3], [1, 2, 3, 2, 1], [1, 2, 1, 2, 1],
+    [2, 2, 2, 2, 2], [2, 1, 1, 1, 2], [2, 3, 3, 3, 2], [2, 3, 2, 3, 2],
+    [3, 3, 3, 3, 3], [3, 3, 2, 1, 1], [3, 2, 1, 2, 3], [3, 2, 3, 2, 3],
+];
+
+/**
  * JSON containing the tile images data along with their respective paytables, which will be used
  * when the game actually has functioning win conditions.
  * @type {{images: *[]}}
@@ -7,52 +17,52 @@ let tileData = {
     images: [
         {
             filename: "assets/images/symbol1.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 0, 4, 15, 50],
             texture: null
         },
         {
             filename: "assets/images/symbol2.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 0, 5, 20, 60],
             texture: null
         },
         {
             filename: "assets/images/symbol3.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 0, 10, 30, 80],
             texture: null
         },
         {
             filename: "assets/images/symbol4.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 0, 15, 50, 100],
             texture: null
         },
         {
             filename: "assets/images/symbol5.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 0, 20, 75, 150],
             texture: null
         },
         {
             filename: "assets/images/symbol6.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 3, 25, 100, 200],
             texture: null
         },
         {
             filename: "assets/images/symbol7.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 3, 30, 150, 300],
             texture: null
         },
         {
             filename: "assets/images/symbol8.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 4, 40, 200, 400],
             texture: null
         },
         {
             filename: "assets/images/symbol9.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 5, 50, 250, 500],
             texture: null
         },
         {
             filename: "assets/images/symbol10.png",
-            paytable: [0, 4, 40, 200, 500],
+            paytable: [0, 6, 60, 300, 600],
             texture: null
         }
     ]
@@ -273,9 +283,9 @@ class Reel extends PIXI.Container {
 
 class SlotMachine extends PIXI.Container {
 
-    constructor(width, height, numberOfReels) {
+    constructor(width, height, numberOfReels, gameScene) {
         super();
-
+        this.gameScene = gameScene;
         this.reels = [];
         // draws a border
         let border = new PIXI.Graphics();
@@ -334,7 +344,25 @@ class SlotMachine extends PIXI.Container {
     }
 
     analyseResult() {
-        // TODO: player won something
+        let value = 0;
+        for (let line of paylines) {
+            let sum = 0;
+            for (let i = 0; i < line.length - 1; i++) {
+                let a = this.reels[i].tiles[line[i]].id;
+                let b = this.reels[i + 1].tiles[line[i + 1]].id;
+                if (a === b) {
+                    sum++;
+                } else {
+                    break;
+                }
+            }
+            let first = this.reels[0].tiles[line[0]].id;
+            value = value + tileData.images[first].paytable[sum];
+        }
+        if (value > 0) {
+            this.gameScene.setWinValue(value * this.gameScene.getBetValue());
+            this.gameScene.setBalance(this.gameScene.getBalance() + this.gameScene.getWinValue());
+        }
     }
 }
 
@@ -358,7 +386,7 @@ class GameScene extends PIXI.Container {
         this.titleLogo.width = 200;
         app.stage.addChild(this.titleLogo);
         //Adds the slot machine
-        this.machine = new SlotMachine(800, 400, 5);
+        this.machine = new SlotMachine(800, 400, 5, this);
         this.machine.x = 100;
         this.machine.y = 70;
         app.stage.addChild(this.machine);
@@ -374,24 +402,36 @@ class GameScene extends PIXI.Container {
         app.stage.addChild(this.btnSpin);
         //Adds the text that shows the balance
         this.balanceText = new PIXI.Text("", this.textStyle());
-        this.balanceText.x = 600;
-        this.balanceText.y = 480;
+        this.balanceText.x = 400;
+        this.balanceText.y = 515;
         this.balanceValue = 1000;
         this.balanceText.text = this.numberFormat().format(this.balanceValue);
         app.stage.addChild(this.balanceText);
+        //Adds header for balance value.
+        this.balanceHeader = new PIXI.Text("", this.textStyle());
+        this.balanceHeader.x = 430;
+        this.balanceHeader.y = 475;
+        this.balanceHeader.text = "Balance:";
+        app.stage.addChild(this.balanceHeader);
         //Adds the text that shows the bet value
         this.betText = new PIXI.Text("", this.textStyle());
-        this.betText.x = 600;
+        this.betText.x = 200;
         this.betText.y = 515;
         this.betValue = 10;
         this.betText.text = this.numberFormat().format(this.betValue);
         app.stage.addChild(this.betText);
+        //Adds header for the bet value.
+        this.betHeader = new PIXI.Text("", this.textStyle());
+        this.betHeader.x = 200;
+        this.betHeader.y = 475;
+        this.betHeader.text = "Bet size:";
+        app.stage.addChild(this.betHeader);
         //Adds the button for increasing bet value
         this.addBetValue = new Sprite(resources["assets/images/plus-normal.png"].texture);
         this.addBetValue.interactive = true;
         this.addBetValue.buttonMode = true;
         this.addBetValue.on("pointerdown", this.raiseBet.bind(this));
-        this.addBetValue.x = 730;
+        this.addBetValue.x = 330;
         this.addBetValue.y = 520;
         this.addBetValue.height = 20;
         this.addBetValue.width = 20;
@@ -401,11 +441,24 @@ class GameScene extends PIXI.Container {
         this.lowerBetValue.interactive = true;
         this.lowerBetValue.buttonMode = true;
         this.lowerBetValue.on("pointerdown", this.lowerBet.bind(this));
-        this.lowerBetValue.x = 730;
+        this.lowerBetValue.x = 330;
         this.lowerBetValue.y = 540;
         this.lowerBetValue.height = 20;
         this.lowerBetValue.width = 20;
         app.stage.addChild(this.lowerBetValue);
+        //Adds a header for winnings value.
+        this.winningsHeader = new PIXI.Text("", this.textStyle());
+        this.winningsHeader.x = 630;
+        this.winningsHeader.y = 475;
+        this.winningsHeader.text = "Winnings:";
+        app.stage.addChild(this.winningsHeader);
+        //Adds a text for winnings.
+        this.winText = new PIXI.Text("", this.textStyle());
+        this.winText.x = 640;
+        this.winText.y = 515;
+        this.winValue = 0;
+        this.winText.text = this.numberFormat().format(this.winValue);
+        app.stage.addChild(this.winText);
     }
 
     /**
@@ -450,6 +503,7 @@ class GameScene extends PIXI.Container {
      */
     spin() {
         if (this.balanceValue - this.betValue >= 0) {
+            this.setWinValue(0);
             this.machine.spinReels();
             let balance = Math.round((this.balanceValue) * 10) / 10 - Math.round((this.betValue) * 10) / 10;
             this.setBalance(Math.round(balance * 10) / 10);
@@ -468,6 +522,13 @@ class GameScene extends PIXI.Container {
         this.balanceText.text = this.numberFormat().format(this.balanceValue);
     }
 
+    /**
+     * Getter method for balance value.
+     * @returns {*} value of the balance.
+     */
+    getBalance() {
+        return this.balanceValue;
+    }
     /**
      * Sets the bet value and text accordingly.
      * @param value - bet value.
@@ -494,6 +555,31 @@ class GameScene extends PIXI.Container {
      */
     raiseBet() {
         this.setBet(Math.round((this.betValue + 0.1) * 10) / 10);
+    }
+
+    /**
+     * Method for retrieving the bet value.
+     * @returns {*} bet value.
+     */
+    getBetValue() {
+        return this.betValue;
+    }
+
+    /**
+     * Sets the winnings value and adjusts the text accordingly.
+     * @param value
+     */
+    setWinValue(value) {
+        this.winValue = value;
+        this.winText.text = this.numberFormat().format(this.winValue);
+    }
+
+    /**
+     * Method for retrieving winnings value.
+     * @returns {*}
+     */
+    getWinValue() {
+        return this.winValue;
     }
 }
 
